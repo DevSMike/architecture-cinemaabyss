@@ -316,6 +316,58 @@ cat .docker/config.json | base64
 #### Шаг 3
 Добавьте сюда скриншота вывода при вызове https://cinemaabyss.example.com/api/movies и  скриншот вывода event-service после вызова тестов.
 
+3.1 При 100-ой миграции трафика все запросы идут в микросервис
+```
+> kubectl logs -n cinemaabyss deploy/movies-service -f
+2026/10/13 19:55:10 Successfully connected to database
+2026/10/13 19:55:10 Starting movies microservice on port 8081
+get movies from movies
+get movies from movies
+get movies from movies
+get movies from movies
+
+```
+
+```
+kubectl logs -n cinemaabyss deploy/monolith -f
+2026/10/13 19:55:00 Successfully connected to database
+2026/10/13 19:55:00 Starting server on port 8080
+```
+
+3.2 При 50-ой миграции трафика все запросы идут и в монолит, и в микросервис
+```
+> kubectl logs -n cinemaabyss deploy/movies-service -f
+2026/10/13 20:12:12 Successfully connected to database
+2026/10/13 20:12:12 Starting movies microservice on port 8081
+get movies from movies
+get movies from movies
+get movies from movies
+```
+
+```
+> kubectl logs -n cinemaabyss deploy/monolith -f
+2026/10/13 20:12:27 Successfully connected to database
+2026/10/13 20:12:27 Starting server on port 8080
+get movies from monolith
+get movies from monolith
+```
+
+3.3 Скриншот тестов
+
+
+![kuber_test](pics/kuber_tests.png)
+
+3.4 Корректная работа events-service
+```json lines
+> kubectl logs -n cinemaabyss deploy/events-service --tail=100
+2026/10/13 19:55:20 Events service listening on :8082
+2026/10/13 20:15:29 sent event: topic=movie-events id=movie-6-viewed
+2026/10/13 20:15:29 consumed: topic=movie-events key=movie-6-viewed value={"id":"movie-6-viewed","type":"movie","timestamp":"2026-10-13T20:15:29.394153854Z","payload":{"movie_id":6,"title":"Test Movie Event","action":"viewed","user_id":4}}
+2026/10/13 20:15:29 sent event: topic=user-events id=user-4-logged_in
+2026/10/13 20:15:29 consumed: topic=user-events key=user-4-logged_in value={"id":"user-4-logged_in","type":"user","timestamp":"2026-10-13T20:15:29.609Z","payload":{"user_id":4,"username":"testuser","action":"logged_in","timestamp":"2026-10-13T20:15:29.609Z"}}
+2026/10/13 20:15:29 sent event: topic=payment-events id=payment-4-completed
+2026/10/13 20:15:29 consumed: topic=payment-events key=payment-4-completed value={"id":"payment-4-completed","type":"payment","timestamp":"2026-10-13T20:15:29.845Z","payload":{"payment_id":4,"user_id":4,"amount":9.99,"status":"completed","timestamp":"2026-10-13T20:15:29.845Z","method_type":"credit_card"}}
+```
 
 # Задание 4
 Для простоты дальнейшего обновления и развертывания вам как архитектуру необходимо так же реализовать helm-чарты для прокси-сервиса и проверить работу 
