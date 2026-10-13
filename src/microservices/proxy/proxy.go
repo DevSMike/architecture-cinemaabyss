@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"encoding/json"
 )
 
 type Route struct {
@@ -23,6 +24,10 @@ func env(key, def string) string {
 	return def
 }
 
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"status": true})
+}
 
 func main() {
 	moviesURL, _  := url.Parse(env("MOVIES_SERVICE_URL", ""))
@@ -34,6 +39,10 @@ func main() {
     monolithProxy := httputil.NewSingleHostReverseProxy(monolithURL)
 
     handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+            if req.URL.Path == "/api/proxy/health" {
+                handleHealth(w,req)
+                return
+            }
     		req.Header.Set("X-Forwarded-Host", req.Host)
       		var p *httputil.ReverseProxy
 
