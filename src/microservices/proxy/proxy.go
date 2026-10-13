@@ -25,13 +25,13 @@ func env(key, def string) string {
 
 
 func main() {
-	moviesURL := env("MOVIES_SERVICE_URL", "")
-	monolithURL := env("MONOLITH_URL", "")
-	gradual := strconv.ParseBool(env("GRADUAL_MIGRATION", "false"))
-	percent := strconv.Atoi(env("MOVIES_MIGRATION_PERCENT", "0"))
+	moviesURL, _  := url.Parse(env("MOVIES_SERVICE_URL", ""))
+	monolithURL, _ := url.Parse(env("MONOLITH_URL", ""))
+	gradual, _ := strconv.ParseBool(env("GRADUAL_MIGRATION", "false"))
+	percent, _ := strconv.Atoi(env("MOVIES_MIGRATION_PERCENT", "0"))
 
-    moviesProxy = httputil.NewSingleHostReverseProxy(moviesURL)
-    monolithProxy = httputil.NewSingleHostReverseProxy(monolithURL)
+    moviesProxy := httputil.NewSingleHostReverseProxy(moviesURL)
+    monolithProxy := httputil.NewSingleHostReverseProxy(monolithURL)
 
     handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
     		req.Header.Set("X-Forwarded-Host", req.Host)
@@ -56,7 +56,7 @@ func main() {
     		p.ServeHTTP(w, req)
     	})
 
-    	addr := env("PORT", "8000")
+    	addr := ":" + env("PORT", "8000")
     	log.Printf("strangler proxy on %s (gradual=%v, percent=%d)", addr, gradual, percent)
     	log.Fatal(http.ListenAndServe(addr, handler))
 }

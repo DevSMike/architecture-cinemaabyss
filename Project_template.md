@@ -46,6 +46,38 @@
    ```
 - Протестируйте постепенный переход, изменив переменную окружения MOVIES_MIGRATION_PERCENT в файле docker-compose.yml.
 
+### 2.1 Ответ на задание 
+Реализация в: **src/microservices/proxy**
+Тестируем вызов API: 
+```bash
+   curl http://localhost:8000/api/movies
+   ```
+
+Test with MOVIES_MIGRATION_PERCENT = **50%**:
+```
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-movies-service  | get movies from movies
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-movies-service  | get movies from movies
+```
+
+Test with MOVIES_MIGRATION_PERCENT = **100%**:
+```
+cinemaabyss-movies-service  | get movies from movies
+cinemaabyss-movies-service  | get movies from movies
+cinemaabyss-movies-service  | get movies from movies
+cinemaabyss-movies-service  | get movies from movies
+cinemaabyss-movies-service  | get movies from movies
+```
+
+Test with MOVIES_MIGRATION_PERCENT = **0%**:
+```
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-monolith        | get movies from monolith
+```
 
 ### 2. Kafka
  Вам как архитектуру нужно также проверить гипотезу насколько просто реализовать применение Kafka в данной архитектуре.
@@ -58,6 +90,15 @@
 
 Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman 
 Приложите скриншот тестов и скриншот состояния топиков Kafka из UI http://localhost:8090 
+
+### 2.2 Ответы
+Микросервис находится здесь: **src/microservices/events**
+Kafka tests::local: 
+
+![kafka_test](pics/kafka_test.png)
+
+Kafka UI: 
+![kafka_ui](pics/kafka-ui.png)
 
 # Задание 3
 
