@@ -443,6 +443,20 @@ minikube tunnel
 https://cinemaabyss.example.com/api/movies
 и приложите скриншот развертывания helm и вывода https://cinemaabyss.example.com/api/movies
 
+4.1 Helm deployment
+
+![helm_start](pics/helm_start.png)
+
+4.2 Curl test api/movies
+```json lines
+PS D:\Programs\Java\architecture-cinemaabyss> kubectl run curl-test -n cinemaabyss --rm -it --restart=Never --image=curlimages/curl -- curl -s -i http://proxy-service:8000/api/movies
+HTTP/1.1 200 OK
+Content-Length: 1267
+Content-Type: application/json
+Date: Thu, 15 Oct 2026 18:34:51 GMT
+
+[{"id":1,"title":"The Shawshank Redemption","description":"Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.","genres":["Drama"],"rating":9.3},{"id":2,"title":"The Godfather","description":"The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.","genres":["Crime","Drama"],"rating":9.2},{"id":3,"title":"The Dark Knight","description":"When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.","genres":["Action","Crime","Drama"],"rating":9},{"id":4,"title":"Pulp Fiction","description":"The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine in four tales of violence and redemption.","genres":["Crime","Drama"],"rating":8.9},{"id":5,"title":"Forrest Gump","description":"The presidencies of Kennedy and Johnson, the Vietnam War, the Watergate scandal and other historical events unfold from the perspective of an Alabama man with an IQ of 75, whose only desire is to be reunited with his childhood sweetheart.","genres":["Drama","Romance"],"rating":8.8}]
+```
 ## Удаляем все
 
 ```bash
