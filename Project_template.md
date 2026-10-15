@@ -4,8 +4,8 @@
 
 1. Спроектируйте to be архитектуру КиноБездны, разделив всю систему на отдельные домены и организовав интеграционное взаимодействие и единую точку вызова сервисов.
 Результат представьте в виде контейнерной диаграммы в нотации С4.
-Добавьте ссылку на файл в этот шаблон
-[ссылка на файл](ссылка)
+Добавьте ссылку на файл в этот шаблон 
+2. Реализованная диаграмма: ![c4](src/diagrams/container_C4.png)
 
 # Задание 2
 
@@ -46,6 +46,38 @@
    ```
 - Протестируйте постепенный переход, изменив переменную окружения MOVIES_MIGRATION_PERCENT в файле docker-compose.yml.
 
+### 2.1 Ответ на задание 
+Реализация в: **src/microservices/proxy**
+Тестируем вызов API: 
+```bash
+   curl http://localhost:8000/api/movies
+   ```
+
+Test with MOVIES_MIGRATION_PERCENT = **50%**:
+```
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-movies-service  | get movies from movies
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-movies-service  | get movies from movies
+```
+
+Test with MOVIES_MIGRATION_PERCENT = **100%**:
+```
+cinemaabyss-movies-service  | get movies from movies
+cinemaabyss-movies-service  | get movies from movies
+cinemaabyss-movies-service  | get movies from movies
+cinemaabyss-movies-service  | get movies from movies
+cinemaabyss-movies-service  | get movies from movies
+```
+
+Test with MOVIES_MIGRATION_PERCENT = **0%**:
+```
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-monolith        | get movies from monolith
+cinemaabyss-monolith        | get movies from monolith
+```
 
 ### 2. Kafka
  Вам как архитектуру нужно также проверить гипотезу насколько просто реализовать применение Kafka в данной архитектуре.
@@ -58,6 +90,15 @@
 
 Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman 
 Приложите скриншот тестов и скриншот состояния топиков Kafka из UI http://localhost:8090 
+
+### 2.2 Ответы
+Микросервис находится здесь: **src/microservices/events**
+Kafka tests::local: 
+
+![kafka_test](pics/kafka_test.png)
+
+Kafka UI: 
+![kafka_ui](pics/kafka-ui.png)
 
 # Задание 3
 
@@ -275,6 +316,58 @@ cat .docker/config.json | base64
 #### Шаг 3
 Добавьте сюда скриншота вывода при вызове https://cinemaabyss.example.com/api/movies и  скриншот вывода event-service после вызова тестов.
 
+3.1 При 100-ой миграции трафика все запросы идут в микросервис
+```
+> kubectl logs -n cinemaabyss deploy/movies-service -f
+2026/10/13 19:55:10 Successfully connected to database
+2026/10/13 19:55:10 Starting movies microservice on port 8081
+get movies from movies
+get movies from movies
+get movies from movies
+get movies from movies
+
+```
+
+```
+kubectl logs -n cinemaabyss deploy/monolith -f
+2026/10/13 19:55:00 Successfully connected to database
+2026/10/13 19:55:00 Starting server on port 8080
+```
+
+3.2 При 50-ой миграции трафика все запросы идут и в монолит, и в микросервис
+```
+> kubectl logs -n cinemaabyss deploy/movies-service -f
+2026/10/13 20:12:12 Successfully connected to database
+2026/10/13 20:12:12 Starting movies microservice on port 8081
+get movies from movies
+get movies from movies
+get movies from movies
+```
+
+```
+> kubectl logs -n cinemaabyss deploy/monolith -f
+2026/10/13 20:12:27 Successfully connected to database
+2026/10/13 20:12:27 Starting server on port 8080
+get movies from monolith
+get movies from monolith
+```
+
+3.3 Скриншот тестов
+
+
+![kuber_test](pics/kuber_tests.png)
+
+3.4 Корректная работа events-service
+```json lines
+> kubectl logs -n cinemaabyss deploy/events-service --tail=100
+2026/10/13 19:55:20 Events service listening on :8082
+2026/10/13 20:15:29 sent event: topic=movie-events id=movie-6-viewed
+2026/10/13 20:15:29 consumed: topic=movie-events key=movie-6-viewed value={"id":"movie-6-viewed","type":"movie","timestamp":"2026-10-13T20:15:29.394153854Z","payload":{"movie_id":6,"title":"Test Movie Event","action":"viewed","user_id":4}}
+2026/10/13 20:15:29 sent event: topic=user-events id=user-4-logged_in
+2026/10/13 20:15:29 consumed: topic=user-events key=user-4-logged_in value={"id":"user-4-logged_in","type":"user","timestamp":"2026-10-13T20:15:29.609Z","payload":{"user_id":4,"username":"testuser","action":"logged_in","timestamp":"2026-10-13T20:15:29.609Z"}}
+2026/10/13 20:15:29 sent event: topic=payment-events id=payment-4-completed
+2026/10/13 20:15:29 consumed: topic=payment-events key=payment-4-completed value={"id":"payment-4-completed","type":"payment","timestamp":"2026-10-13T20:15:29.845Z","payload":{"payment_id":4,"user_id":4,"amount":9.99,"status":"completed","timestamp":"2026-10-13T20:15:29.845Z","method_type":"credit_card"}}
+```
 
 # Задание 4
 Для простоты дальнейшего обновления и развертывания вам как архитектуру необходимо так же реализовать helm-чарты для прокси-сервиса и проверить работу 
@@ -350,6 +443,20 @@ minikube tunnel
 https://cinemaabyss.example.com/api/movies
 и приложите скриншот развертывания helm и вывода https://cinemaabyss.example.com/api/movies
 
+4.1 Helm deployment
+
+![helm_start](pics/helm_start.png)
+
+4.2 Curl test api/movies
+```json lines
+PS D:\Programs\Java\architecture-cinemaabyss> kubectl run curl-test -n cinemaabyss --rm -it --restart=Never --image=curlimages/curl -- curl -s -i http://proxy-service:8000/api/movies
+HTTP/1.1 200 OK
+Content-Length: 1267
+Content-Type: application/json
+Date: Thu, 15 Oct 2026 18:34:51 GMT
+
+[{"id":1,"title":"The Shawshank Redemption","description":"Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.","genres":["Drama"],"rating":9.3},{"id":2,"title":"The Godfather","description":"The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.","genres":["Crime","Drama"],"rating":9.2},{"id":3,"title":"The Dark Knight","description":"When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.","genres":["Action","Crime","Drama"],"rating":9},{"id":4,"title":"Pulp Fiction","description":"The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine in four tales of violence and redemption.","genres":["Crime","Drama"],"rating":8.9},{"id":5,"title":"Forrest Gump","description":"The presidencies of Kennedy and Johnson, the Vietnam War, the Watergate scandal and other historical events unfold from the perspective of an Alabama man with an IQ of 75, whose only desire is to be reunited with his childhood sweetheart.","genres":["Drama","Romance"],"rating":8.8}]
+```
 ## Удаляем все
 
 ```bash

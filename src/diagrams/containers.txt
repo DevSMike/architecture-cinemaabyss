@@ -1,0 +1,64 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C4 Container: КиноБездна
+
+Person(user, "Пользователь", "Получает рекомендации, оплачивает подписки, смотрит фильмы")
+
+System_Boundary(home, "Платформа онлайн-кинотеатра") {
+    Container(web, "Web Application", "React", "UI: просмотр фильмов, управление подпиской")
+    Container(gateway, "Gateway", "Go", "Rate limiting, routing")
+
+    Container(filmService, "Film Service", "Go", "Получение, добавление и предоставление фильмов пользователю")
+    ContainerDb(filmDb, "Film DB", "PostgreSQL", "Фильмы, которые есть на платформе")
+
+    ContainerQueue(kafka, "Payment Events", "Kafka", "События о состоянии платежей")
+    ContainerQueue(kafkaFilm, "Film Events", "Kafka", "События онлайн-кинотеатра")
+    ContainerQueue(kafkaSub, "Sub/Payment Events", "Kafka", "События подписок и платежей по подпискам")
+    ContainerQueue(rabbitMQ, "Recommender Events", "RabbitMQ", "События рекомендательной системы")
+
+    Container(userService, "User Service", "Go", "Обрабатывает пользователей")
+    ContainerDb(userDB, "User DB", "PostgreSQL", "Хранит информацию о пользователях")
+
+    Container(paymentsService, "Payment Service", "Go", "Обрабатывает платежи в системе")
+    ContainerDb(paymentsDB, "Payments DB", "PostgreSQL", "Хранит пользовательские платежи")
+
+    Container(subscriptionService, "Subscription Service", "Go", "Управляет подписками пользователей")
+    ContainerDb(subscriptionDB, "Subscription DB", "PostgreSQL", "Подписки пользователей")
+}
+
+System_Ext(recSystem, "Рекомендательная система", "Система, предоставляющая рекомендации")
+System_Ext(paymentSystem, "Платежная система", "Система, которая проводит и подтверждает платежи")
+System_Ext(onlineCinema, "Онлайн-кинотеатр", "Система, которая предоставляет фильмы для просмотра, добавляет/удаляет фильмы")
+
+Rel(user, web, "Использует", "HTTPS")
+Rel(web, gateway, "Маршрутизация запросов к API, rate limiting", "HTTPS/JSON")
+
+Rel(gateway, filmService, "Получение фильма или списка фильмов", "HTTPS/JSON")
+Rel(gateway, userService, "Создание новых пользователей", "HTTPS/JSON")
+Rel(gateway, subscriptionService, "Оплата/отмена подписки", "HTTPS/JSON")
+
+Rel(filmService, filmDb, "Читает/пишет", "SQL")
+Rel(userService, userDB, "Читает/пишет", "SQL")
+Rel(paymentsService, paymentsDB, "Читает/пишет", "SQL")
+
+Rel(onlineCinema, kafkaFilm, "Публикует события о добавлении/удалении фильмов", "Kafka")
+Rel(kafkaFilm, filmService, "Доставляет события фильмов", "Kafka")
+
+Rel(recSystem, rabbitMQ, "Публикует события рекомендательной системы", "AMQP")
+Rel(filmService, rabbitMQ, "Запрашивает рекомендации", "AMQP")
+Rel(rabbitMQ, filmService, "Получает рекомендации", "AMQP")
+
+Rel(subscriptionService, kafkaSub, "Публикует событие создания/отмены подписки пользователем", "Kafka")
+Rel(kafkaSub, paymentsService, "Принимает событие создания/отмены подписки пользователем", "Kafka")
+Rel(paymentsService, kafkaSub, "Публикует событие о состоянии платежа пользователя", "Kafka")
+Rel(kafkaSub, subscriptionService, "Принимает событие о состоянии платежа пользователя", "Kafka")
+
+Rel(subscriptionService, subscriptionDB, "Читает/пишет", "SQL")
+
+Rel(paymentsService, kafka, "Публикует событие о создании платежа", "Kafka")
+Rel(kafka, paymentSystem, "Принимает и обрабатывает платеж", "Kafka")
+Rel(paymentSystem, kafka, "Публикует событие об успешности/неуспешности платежа", "Kafka")
+Rel(kafka, paymentsService, "Принимает событие о состоянии платежа", "Kafka")
+
+@enduml

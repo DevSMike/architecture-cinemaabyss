@@ -1,0 +1,72 @@
+package main
+
+import (
+	"log"
+	"math/rand"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"encoding/json"
+)
+
+type Route struct {
+	Prefix string
+	Target *url.URL
+}
+
+func env(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"status": true})
+}
+
+func main() {
+	moviesURL, _  := url.Parse(env("MOVIES_SERVICE_URL", ""))
+	monolithURL, _ := url.Parse(env("MONOLITH_URL", ""))
+	gradual, _ := strconv.ParseBool(env("GRADUAL_MIGRATION", "false"))
+	percent, _ := strconv.Atoi(env("MOVIES_MIGRATION_PERCENT", "0"))
+
+    moviesProxy := httputil.NewSingleHostReverseProxy(moviesURL)
+    monolithProxy := httputil.NewSingleHostReverseProxy(monolithURL)
+
+    handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+            if req.URL.Path == "/api/proxy/health" {
+                handleHealth(w,req)
+                return
+            }
+    		req.Header.Set("X-Forwarded-Host", req.Host)
+      		var p *httputil.ReverseProxy
+
+    		switch {
+    		case strings.HasPrefix(req.URL.Path, "/api/movies"):
+    			switch {
+    			case !gradual || percent <= 0:
+    				p = monolithProxy
+    			case percent >= 100:
+    				p = moviesProxy
+    			case rand.Intn(100) < percent:
+    				p = moviesProxy
+    			default:
+    				p = monolithProxy
+    			}
+    		default:
+    			p = monolithProxy
+    		}
+
+    		p.ServeHTTP(w, req)
+    	})
+
+    	addr := ":" + env("PORT", "8000")
+    	log.Printf("strangler proxy on %s (gradual=%v, percent=%d)", addr, gradual, percent)
+    	log.Fatal(http.ListenAndServe(addr, handler))
+}
+
